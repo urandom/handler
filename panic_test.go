@@ -31,9 +31,9 @@ func TestPanic(t *testing.T) {
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-			h := handler.Panic(nil, tc.showStack, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := handler.Panic(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				panic("Test")
-			}))
+			}), handler.PanicOpts{nopLogger{}, tc.showStack, ""})
 
 			r, _ := http.NewRequest("GET", "http://localhost:8080", nil)
 			rec := httptest.NewRecorder()
@@ -57,3 +57,7 @@ func TestPanic(t *testing.T) {
 	}
 
 }
+
+type nopLogger struct{}
+
+func (nopLogger) Print(v ...interface{}) {}

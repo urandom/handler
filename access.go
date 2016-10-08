@@ -8,24 +8,28 @@ import (
 	"time"
 )
 
-var AccessDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
+// AccessDateFormat is the default timestamp format for the access log messages.
+const AccessDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
 
-// AccessLogger is used to print out access log messages.
-type AccessLogger interface {
-	Print(v ...interface{})
+type AccessOpts struct {
+	// Logger will be used to print out an entry whenever a request is handled.
+	// If none is provded, os.Stdout is used.
+	Logger Logger
+	// DateFormat is used to format the timestamp. Defaults to AccessDateFormat.
+	DateFormat string
 }
 
 // Access returns a handler that writes an access log message to the provided
-// logger whenever the handler h is invoked. The log message is of the
-// following format:
+// logger, provided by the options, whenever the handler h is invoked. The log
+// message is of the following format:
 //
 // IP - USER [DATETIME] "HTTP_METHOD URI" STATUS_CODE BODY_LENGTH "REFERER" USER_AGENT
-//
-// If the logger l is nil, the function panics.
-func Access(l AccessLogger, h http.Handler) http.Handler {
-	if l == nil {
-		// Panic on incorrect usage
-		panic("logger is nil")
+func Access(h http.Handler, o AccessOpts) http.Handler {
+	if o.Logger == nil {
+		o.Logger = outLogger{}
+	}
+	if o.DateFormat == "" {
+		o.DateFormat = AccessDateFormat
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,11 +50,11 @@ func Access(l AccessLogger, h http.Handler) http.Handler {
 		w.WriteHeader(wrapper.Code)
 		w.Write(wrapper.Body.Bytes())
 
-		timestamp := time.Now().Format(AccessDateFormat)
+		timestamp := time.Now().Format(o.DateFormat)
 		code := wrapper.Code
 		length := wrapper.Body.Len()
 
-		l.Print(fmt.Sprintf("%s - %s [%s] \"%s %s\" %d %d \"%s\" %s",
+		o.Logger.Print(fmt.Sprintf("%s - %s [%s] \"%s %s\" %d %d \"%s\" %s",
 			remoteAddr, remoteUser, timestamp, method, uri, code, length, referer, userAgent))
 	})
 }

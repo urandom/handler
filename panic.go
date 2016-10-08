@@ -7,33 +7,42 @@ import (
 	"time"
 )
 
-var PanicDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
+// PanicDateFormat is the default timestamp format for the panic messages.
+const PanicDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
 
-// PanicLogger is used to print out detailed messages when a panic occurs.
-type PanicLogger interface {
-	Print(v ...interface{})
+// PanicOpts represents the various options for the Panic handler
+type PanicOpts struct {
+	// Logger will be used to print out detailed message whenever a panic is
+	// recovered. Each message includes a stack trace and timestamp. If none is
+	// provded, os.Stderr is used.
+	Logger Logger
+	// ShowStack will print the stack in the given http.ResponseWriter if true.
+	ShowStack bool
+	// DateFormat is used to format the timestamp. Defaults to PanicDateFormat.
+	DateFormat string
 }
 
 // Panic returns a handler that invokes the passed handler h, catching any
-// panics. If one occurs, an HTTP 500 response is produced. If the logger l is
-// not nil, it will be used to print out a detailed message, including the
-// timestamp and stack trace. If showStack is true, the detailed message is
-// also written to the ResponseWriter.
-func Panic(l PanicLogger, showStack bool, h http.Handler) http.Handler {
+// panics. If one occurs, an HTTP 500 response is produced.
+func Panic(h http.Handler, o PanicOpts) http.Handler {
+	if o.Logger == nil {
+		o.Logger = errLogger{}
+	}
+	if o.DateFormat == "" {
+		o.DateFormat = PanicDateFormat
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
 				stack := debug.Stack()
-				timestamp := time.Now().Format(PanicDateFormat)
+				timestamp := time.Now().Format(o.DateFormat)
 				message := fmt.Sprintf("%s - %s\n%s\n", timestamp, rec, stack)
 
-				if l != nil {
-					l.Print(message)
-				}
+				o.Logger.Print(message)
 
 				w.WriteHeader(http.StatusInternalServerError)
 
-				if !showStack {
+				if !o.ShowStack {
 					message = "Internal Server Error"
 				}
 

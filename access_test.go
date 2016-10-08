@@ -30,10 +30,10 @@ func TestAccess(t *testing.T) {
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			l := &logger{}
-			h := handler.Access(l, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := handler.Access(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.code)
 				w.Write([]byte(tc.resp))
-			}))
+			}), handler.AccessOpts{Logger: l})
 
 			r, _ := http.NewRequest(tc.method, "http://localhost:8080"+tc.uri, nil)
 			rec := httptest.NewRecorder()
