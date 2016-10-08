@@ -9,6 +9,7 @@ import (
 
 var PanicDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
 
+// PanicLogger is used to print out detailed messages when a panic occurs.
 type PanicLogger interface {
 	Print(v ...interface{})
 }
