@@ -3,7 +3,6 @@ package handler
 import (
 	"compress/gzip"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -27,11 +26,10 @@ func Gzip(h http.Handler) http.Handler {
 		if w.Header().Get("Content-Type") == "" {
 			w.Header().Set("Content-Type", http.DetectContentType(wrapper.Body.Bytes()))
 		}
+		w.Header().Del("Content-Length")
 
-		buf := bufferPool.Get()
-		defer bufferPool.Put(buf)
-
-		gz := gzip.NewWriter(buf)
+		gz := gzip.NewWriter(w)
+		gz.Flush()
 
 		if _, err := gz.Write(wrapper.Body.Bytes()); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -40,10 +38,6 @@ func Gzip(h http.Handler) http.Handler {
 
 		gz.Close()
 
-		w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
-
 		w.WriteHeader(wrapper.Code)
-
-		buf.WriteTo(w)
 	})
 }

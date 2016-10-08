@@ -1,9 +1,9 @@
 package handler_test
 
 import (
-	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,17 +38,20 @@ func TestGzip(t *testing.T) {
 			h.ServeHTTP(rec, r)
 
 			if tc.encode {
-				var buf bytes.Buffer
-				gz := gzip.NewWriter(&buf)
+				gz, err := gzip.NewReader(rec.Body)
+				if err != nil {
+					t.Fatalf("gzip reader create: %s", err)
+				}
 
-				if _, err := gz.Write([]byte(tc.content)); err != nil {
-					t.Fatalf("gzip error: %s", err)
+				b, err := ioutil.ReadAll(gz)
+				if err != nil {
+					t.Fatalf("gzip reader: %s", err)
 				}
 
 				gz.Close()
 
-				if !bytes.Equal(buf.Bytes(), rec.Body.Bytes()) {
-					t.Fatalf("expected gzipped %v, got %v", buf.Bytes(), rec.Body.Bytes())
+				if string(b) != tc.content {
+					t.Fatalf("expected gzipped %v, got %v", tc.content, string(b))
 				}
 			} else {
 				if rec.Body.String() != tc.content {
