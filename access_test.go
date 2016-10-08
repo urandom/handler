@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 func TestAccess(t *testing.T) {
 	cases := []struct {
 		uri     string
+		user    string
 		method  string
 		code    int
 		resp    string
@@ -21,8 +23,8 @@ func TestAccess(t *testing.T) {
 		ua      string
 		message string
 	}{
-		{"/", "GET", 200, "test1", "1.2.3.4", "ref1", "ua1", "%s -  [%s] \"%s %s\" %d %d \"%s\" %s"},
-		{"/posted", "POST", 304, "test2.0", "10.0.0.5", "ref2", "ua2", "%s -  [%s] \"%s %s\" %d %d \"%s\" %s"},
+		{"/", "", "GET", 200, "test1", "1.2.3.4", "ref1", "ua1", "%s - %s [%s] \"%s %s\" %d %d \"%s\" %s"},
+		{"/posted", "frank", "POST", 304, "test2.0", "10.0.0.5", "ref2", "ua2", "%s - %s [%s] \"%s %s\" %d %d \"%s\" %s"},
 	}
 
 	for i, tc := range cases {
@@ -38,10 +40,13 @@ func TestAccess(t *testing.T) {
 
 			r.Header.Add("Referer", tc.ref)
 			r.Header.Add("User-Agent", tc.ua)
+			if tc.user != "" {
+				r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(tc.user+":"+"foobar")))
+			}
 			r.RemoteAddr = tc.ip
 			h.ServeHTTP(rec, r)
 
-			m := fmt.Sprintf(tc.message, tc.ip, time.Now().Format(handler.AccessDateFormat), tc.method, tc.uri, tc.code, len(tc.resp), tc.ref, tc.ua)
+			m := fmt.Sprintf(tc.message, tc.ip, tc.user, time.Now().Format(handler.AccessDateFormat), tc.method, tc.uri, tc.code, len(tc.resp), tc.ref, tc.ua)
 
 			if m != l.message {
 				t.Fatalf("expected %s, got %s", m, l.message)

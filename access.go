@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -32,7 +33,7 @@ func Access(l AccessLogger, h http.Handler) http.Handler {
 
 		uri := r.URL.RequestURI()
 		remoteAddr := remoteAddr(r)
-		remoteUser := ""
+		remoteUser := remoteUser(r)
 		method := r.Method
 		referer := r.Header.Get("Referer")
 		userAgent := r.Header.Get("User-Agent")
@@ -78,4 +79,24 @@ func ipAddrFromRemoteAddr(s string) string {
 		return s
 	}
 	return s[:idx]
+}
+
+func remoteUser(r *http.Request) string {
+	if auth := r.Header.Get("Authorization"); auth != "" {
+		fields := strings.Fields(auth)
+		if len(fields) > 1 {
+			decoded, err := base64.StdEncoding.DecodeString(fields[1])
+
+			if err != nil {
+				return ""
+			}
+
+			creds := strings.Split(string(decoded), ":")
+			if len(creds) > 1 {
+				return creds[0]
+			}
+		}
+	}
+
+	return ""
 }
