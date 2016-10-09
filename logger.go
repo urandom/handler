@@ -10,18 +10,18 @@ type Logger interface {
 	Print(v ...interface{})
 }
 
-type nopLogger struct{}
+type NopLogger struct{}
 
-func (l nopLogger) Print(v ...interface{}) {}
+func (l NopLogger) Print(v ...interface{}) {}
 
-type outLogger struct{}
+type OutLogger struct{}
 
-func (l outLogger) Print(v ...interface{}) {
+func (l OutLogger) Print(v ...interface{}) {
 	fmt.Fprint(os.Stdout, v...)
 }
 
-type errLogger struct{}
+type ErrLogger struct{}
 
-func (l errLogger) Print(v ...interface{}) {
+func (l ErrLogger) Print(v ...interface{}) {
 	fmt.Fprint(os.Stderr, v...)
 }

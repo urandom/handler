@@ -1,4 +1,4 @@
-package handler
+package log
 
 import (
 	"encoding/base64"
@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/urandom/handler"
 )
 
 // AccessDateFormat is the default timestamp format for the access log messages.
@@ -14,7 +16,7 @@ const AccessDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
 type AccessOpts struct {
 	// Logger will be used to print out an entry whenever a request is handled.
 	// If none is provded, os.Stdout is used.
-	Logger Logger
+	Logger handler.Logger
 	// DateFormat is used to format the timestamp. Defaults to AccessDateFormat.
 	DateFormat string
 }
@@ -26,14 +28,14 @@ type AccessOpts struct {
 // IP - USER [DATETIME] "HTTP_METHOD URI" STATUS_CODE BODY_LENGTH "REFERER" USER_AGENT
 func Access(h http.Handler, o AccessOpts) http.Handler {
 	if o.Logger == nil {
-		o.Logger = outLogger{}
+		o.Logger = handler.OutLogger{}
 	}
 	if o.DateFormat == "" {
 		o.DateFormat = AccessDateFormat
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		wrapper := NewResponseWrapper(w)
+		wrapper := handler.NewResponseWrapper(w)
 
 		uri := r.URL.RequestURI()
 		remoteAddr := remoteAddr(r)

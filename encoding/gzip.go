@@ -1,15 +1,17 @@
-package handler
+package encoding
 
 import (
 	"compress/gzip"
 	"net/http"
 	"strings"
+
+	"github.com/urandom/handler"
 )
 
 type GzipOpts struct {
 	// Logger is used to print out any error messages during compression. If
 	// none is provided, no error message will be printed.
-	Logger Logger
+	Logger handler.Logger
 }
 
 // Gzip returns a handler that will use gzip compression on the response body
@@ -17,7 +19,7 @@ type GzipOpts struct {
 // 'Accept-Encoding' header that contains 'gzip'.
 func Gzip(h http.Handler, o GzipOpts) http.Handler {
 	if o.Logger == nil {
-		o.Logger = nopLogger{}
+		o.Logger = handler.NopLogger{}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
@@ -25,7 +27,7 @@ func Gzip(h http.Handler, o GzipOpts) http.Handler {
 			return
 		}
 
-		wrapper := NewResponseWrapper(w)
+		wrapper := handler.NewResponseWrapper(w)
 
 		h.ServeHTTP(wrapper, r)
 

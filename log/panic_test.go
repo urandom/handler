@@ -1,4 +1,4 @@
-package handler_test
+package log_test
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/urandom/handler"
+	"github.com/urandom/handler/log"
 )
 
 func TestPanic(t *testing.T) {
@@ -25,15 +26,15 @@ func TestPanic(t *testing.T) {
 		{
 			http.StatusInternalServerError,
 			true,
-			fmt.Sprintf("%s - %s", time.Now().Format(handler.PanicDateFormat), "Test"),
+			fmt.Sprintf("%s - %s", time.Now().Format(log.PanicDateFormat), "Test"),
 		},
 	}
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-			h := handler.Panic(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := log.Panic(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				panic("Test")
-			}), handler.PanicOpts{nopLogger{}, tc.showStack, ""})
+			}), log.PanicOpts{handler.NopLogger{}, tc.showStack, ""})
 
 			r, _ := http.NewRequest("GET", "http://localhost:8080", nil)
 			rec := httptest.NewRecorder()
@@ -57,7 +58,3 @@ func TestPanic(t *testing.T) {
 	}
 
 }
-
-type nopLogger struct{}
-
-func (nopLogger) Print(v ...interface{}) {}

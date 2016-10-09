@@ -1,4 +1,4 @@
-package handler_test
+package log_test
 
 import (
 	"encoding/base64"
@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/urandom/handler"
+	"github.com/urandom/handler/log"
 )
 
 func TestAccess(t *testing.T) {
@@ -30,10 +30,10 @@ func TestAccess(t *testing.T) {
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			l := &logger{}
-			h := handler.Access(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := log.Access(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.code)
 				w.Write([]byte(tc.resp))
-			}), handler.AccessOpts{Logger: l})
+			}), log.AccessOpts{Logger: l})
 
 			r, _ := http.NewRequest(tc.method, "http://localhost:8080"+tc.uri, nil)
 			rec := httptest.NewRecorder()
@@ -46,7 +46,7 @@ func TestAccess(t *testing.T) {
 			r.RemoteAddr = tc.ip
 			h.ServeHTTP(rec, r)
 
-			m := fmt.Sprintf(tc.message, tc.ip, tc.user, time.Now().Format(handler.AccessDateFormat), tc.method, tc.uri, tc.code, len(tc.resp), tc.ref, tc.ua)
+			m := fmt.Sprintf(tc.message, tc.ip, tc.user, time.Now().Format(log.AccessDateFormat), tc.method, tc.uri, tc.code, len(tc.resp), tc.ref, tc.ua)
 
 			if m != l.message {
 				t.Fatalf("expected %s, got %s", m, l.message)

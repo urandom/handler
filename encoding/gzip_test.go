@@ -1,4 +1,4 @@
-package handler_test
+package encoding_test
 
 import (
 	"compress/gzip"
@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/urandom/handler"
+	"github.com/urandom/handler/encoding"
 )
 
 func TestGzip(t *testing.T) {
@@ -24,9 +24,9 @@ func TestGzip(t *testing.T) {
 
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-			h := handler.Gzip(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			h := encoding.Gzip(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte(tc.content))
-			}), handler.GzipOpts{})
+			}), encoding.GzipOpts{})
 
 			r, _ := http.NewRequest("GET", "http://localhost:8080", nil)
 			rec := httptest.NewRecorder()

@@ -1,10 +1,12 @@
-package handler
+package log
 
 import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"github.com/urandom/handler"
 )
 
 // PanicDateFormat is the default timestamp format for the panic messages.
@@ -15,7 +17,7 @@ type PanicOpts struct {
 	// Logger will be used to print out detailed message whenever a panic is
 	// recovered. Each message includes a stack trace and timestamp. If none is
 	// provded, os.Stderr is used.
-	Logger Logger
+	Logger handler.Logger
 	// ShowStack will print the stack in the given http.ResponseWriter if true.
 	ShowStack bool
 	// DateFormat is used to format the timestamp. Defaults to PanicDateFormat.
@@ -26,7 +28,7 @@ type PanicOpts struct {
 // panics. If one occurs, an HTTP 500 response is produced.
 func Panic(h http.Handler, o PanicOpts) http.Handler {
 	if o.Logger == nil {
-		o.Logger = errLogger{}
+		o.Logger = handler.ErrLogger{}
 	}
 	if o.DateFormat == "" {
 		o.DateFormat = PanicDateFormat
