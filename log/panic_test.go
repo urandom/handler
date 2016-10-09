@@ -34,7 +34,7 @@ func TestPanic(t *testing.T) {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			h := log.Panic(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				panic("Test")
-			}), log.PanicOpts{handler.NopLogger{}, tc.showStack, ""})
+			}), log.PanicOpts{handler.NopLogger(), tc.showStack, ""})
 
 			r, _ := http.NewRequest("GET", "http://localhost:8080", nil)
 			rec := httptest.NewRecorder()

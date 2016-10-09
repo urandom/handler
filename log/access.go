@@ -28,7 +28,7 @@ type AccessOpts struct {
 // IP - USER [DATETIME] "HTTP_METHOD URI" STATUS_CODE BODY_LENGTH "REFERER" USER_AGENT
 func Access(h http.Handler, o AccessOpts) http.Handler {
 	if o.Logger == nil {
-		o.Logger = handler.OutLogger{}
+		o.Logger = handler.OutLogger()
 	}
 	if o.DateFormat == "" {
 		o.DateFormat = AccessDateFormat

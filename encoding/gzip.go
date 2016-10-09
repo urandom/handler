@@ -19,7 +19,7 @@ type GzipOpts struct {
 // 'Accept-Encoding' header that contains 'gzip'.
 func Gzip(h http.Handler, o GzipOpts) http.Handler {
 	if o.Logger == nil {
-		o.Logger = handler.NopLogger{}
+		o.Logger = handler.NopLogger()
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {

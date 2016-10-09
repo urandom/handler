@@ -10,21 +10,33 @@ type Logger interface {
 	Print(v ...interface{})
 }
 
-// NopLogger is a Logger implementation that does nothing
-type NopLogger struct{}
+// NopLogger returns a Logger implementation that does nothing
+func NopLogger() Logger {
+	return nopLogger{}
+}
 
-func (l NopLogger) Print(v ...interface{}) {}
+// OutLogger returns a Logger implementation that outputs to os.Stdout
+func OutLogger() Logger {
+	return outLogger{}
+}
 
-// OutLogger is a Logger implementation that outputs to os.Stdout
-type OutLogger struct{}
+// ErrLogger returns a Logger implementation that outputs to os.Stderr
+func ErrLogger() Logger {
+	return errLogger{}
+}
 
-func (l OutLogger) Print(v ...interface{}) {
+type nopLogger struct{}
+
+func (l nopLogger) Print(v ...interface{}) {}
+
+type outLogger struct{}
+
+func (l outLogger) Print(v ...interface{}) {
 	fmt.Fprint(os.Stdout, v...)
 }
 
-// ErrLogger is a Logger implementation that outputs to os.Stderr
-type ErrLogger struct{}
+type errLogger struct{}
 
-func (l ErrLogger) Print(v ...interface{}) {
+func (l errLogger) Print(v ...interface{}) {
 	fmt.Fprint(os.Stderr, v...)
 }

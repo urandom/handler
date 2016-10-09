@@ -28,7 +28,7 @@ type PanicOpts struct {
 // panics. If one occurs, an HTTP 500 response is produced.
 func Panic(h http.Handler, o PanicOpts) http.Handler {
 	if o.Logger == nil {
-		o.Logger = handler.ErrLogger{}
+		o.Logger = handler.ErrLogger()
 	}
 	if o.DateFormat == "" {
 		o.DateFormat = PanicDateFormat

@@ -98,7 +98,7 @@ func I18N(h http.Handler, o I18NOpts) http.Handler {
 	}
 
 	if o.Logger == nil {
-		o.Logger = handler.NopLogger{}
+		o.Logger = handler.NopLogger()
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
