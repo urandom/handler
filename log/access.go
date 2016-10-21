@@ -15,7 +15,7 @@ const AccessDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
 
 type AccessOpts struct {
 	// Logger will be used to print out an entry whenever a request is handled.
-	// If none is provded, os.Stdout is used.
+	// If none is provided, os.Stdout is used.
 	Logger handler.Logger
 	// DateFormat is used to format the timestamp. Defaults to AccessDateFormat.
 	DateFormat string
