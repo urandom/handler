@@ -16,7 +16,7 @@ const PanicDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
 type PanicOpts struct {
 	// Logger will be used to print out detailed message whenever a panic is
 	// recovered. Each message includes a stack trace and timestamp. If none is
-	// provded, os.Stderr is used.
+	// provided, os.Stderr is used.
 	Logger handler.Logger
 	// ShowStack will print the stack in the given http.ResponseWriter if true.
 	ShowStack bool
