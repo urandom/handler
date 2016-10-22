@@ -33,7 +33,7 @@ func TestAccess(t *testing.T) {
 			h := log.Access(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.code)
 				w.Write([]byte(tc.resp))
-			}), log.AccessOpts{Logger: l})
+			}), log.Logger(l))
 
 			r, _ := http.NewRequest(tc.method, "http://localhost:8080"+tc.uri, nil)
 			rec := httptest.NewRecorder()

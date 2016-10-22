@@ -13,12 +13,30 @@ import (
 // AccessDateFormat is the default timestamp format for the access log messages.
 const AccessDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
 
-type AccessOpts struct {
-	// Logger will be used to print out an entry whenever a request is handled.
-	// If none is provded, os.Stdout is used.
-	Logger handler.Logger
-	// DateFormat is used to format the timestamp. Defaults to AccessDateFormat.
-	DateFormat string
+type options struct {
+	logger     handler.Logger
+	dateFormat string
+	showStack  bool
+}
+
+// An Option is used to change the default behaviour of logging handlers.
+type Option struct {
+	f func(o *options)
+}
+
+// Logger defines the logger to be used whenever detailed messages have to be
+// printed out.
+func Logger(l handler.Logger) Option {
+	return Option{func(o *options) {
+		o.logger = l
+	}}
+}
+
+// DateFormat is used to format the timestamp.
+func DateFormat(f string) Option {
+	return Option{func(o *options) {
+		o.dateFormat = f
+	}}
 }
 
 // Access returns a handler that writes an access log message to the provided
@@ -26,13 +44,11 @@ type AccessOpts struct {
 // message is of the following format:
 //
 // IP - USER [DATETIME] "HTTP_METHOD URI" STATUS_CODE BODY_LENGTH "REFERER" USER_AGENT
-func Access(h http.Handler, o AccessOpts) http.Handler {
-	if o.Logger == nil {
-		o.Logger = handler.OutLogger()
-	}
-	if o.DateFormat == "" {
-		o.DateFormat = AccessDateFormat
-	}
+//
+// By default, all messages are printed to os.Stdout.
+func Access(h http.Handler, opts ...Option) http.Handler {
+	o := options{logger: handler.OutLogger(), dateFormat: AccessDateFormat}
+	o.apply(opts)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		wrapper := handler.NewResponseWrapper(w)
@@ -52,11 +68,11 @@ func Access(h http.Handler, o AccessOpts) http.Handler {
 		w.WriteHeader(wrapper.Code)
 		w.Write(wrapper.Body.Bytes())
 
-		timestamp := time.Now().Format(o.DateFormat)
+		timestamp := time.Now().Format(o.dateFormat)
 		code := wrapper.Code
 		length := wrapper.Body.Len()
 
-		o.Logger.Print(fmt.Sprintf("%s - %s [%s] \"%s %s\" %d %d \"%s\" %s",
+		o.logger.Print(fmt.Sprintf("%s - %s [%s] \"%s %s\" %d %d \"%s\" %s",
 			remoteAddr, remoteUser, timestamp, method, uri, code, length, referer, userAgent))
 	})
 }
@@ -105,4 +121,10 @@ func remoteUser(r *http.Request) string {
 	}
 
 	return ""
+}
+
+func (o *options) apply(opts []Option) {
+	for _, op := range opts {
+		op.f(o)
+	}
 }

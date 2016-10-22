@@ -41,7 +41,7 @@ func TestI18N(t *testing.T) {
 				if r.RequestURI != tc.exp {
 					t.Fatalf("expected url path %s, got %s", tc.exp, r.URL.Path)
 				}
-			}), lang.I18NOpts{Languages: langs, UrlPrefix: tc.prefix}))
+			}), lang.Languages(langs), lang.URLPrefix(tc.prefix)))
 			defer ts.Close()
 
 			r, _ := http.NewRequest("GET", ts.URL+tc.prefix+tc.real, nil)

@@ -26,7 +26,7 @@ func TestGzip(t *testing.T) {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			h := encoding.Gzip(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte(tc.content))
-			}), encoding.GzipOpts{})
+			}))
 
 			r, _ := http.NewRequest("GET", "http://localhost:8080", nil)
 			rec := httptest.NewRecorder()

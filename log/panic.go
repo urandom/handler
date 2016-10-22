@@ -12,39 +12,35 @@ import (
 // PanicDateFormat is the default timestamp format for the panic messages.
 const PanicDateFormat = "Jan 2, 2006 at 3:04pm (MST)"
 
-// PanicOpts represents the various options for the Panic handler
-type PanicOpts struct {
-	// Logger will be used to print out detailed message whenever a panic is
-	// recovered. Each message includes a stack trace and timestamp. If none is
-	// provded, os.Stderr is used.
-	Logger handler.Logger
-	// ShowStack will print the stack in the given http.ResponseWriter if true.
-	ShowStack bool
-	// DateFormat is used to format the timestamp. Defaults to PanicDateFormat.
-	DateFormat string
-}
+var (
+	// ShowStack will cause the stack to be printed out in the
+	// http.ResponseWriter. Only used by the Panic handler.
+	ShowStack Option = showStack
+	showStack        = Option{func(o *options) {
+		o.showStack = true
+	}}
+)
 
 // Panic returns a handler that invokes the passed handler h, catching any
 // panics. If one occurs, an HTTP 500 response is produced.
-func Panic(h http.Handler, o PanicOpts) http.Handler {
-	if o.Logger == nil {
-		o.Logger = handler.ErrLogger()
-	}
-	if o.DateFormat == "" {
-		o.DateFormat = PanicDateFormat
-	}
+//
+// By default, all messages are printed out to os.Stderr.
+func Panic(h http.Handler, opts ...Option) http.Handler {
+	o := options{logger: handler.ErrLogger(), dateFormat: PanicDateFormat}
+	o.apply(opts)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
 				stack := debug.Stack()
-				timestamp := time.Now().Format(o.DateFormat)
+				timestamp := time.Now().Format(o.dateFormat)
 				message := fmt.Sprintf("%s - %s\n%s\n", timestamp, rec, stack)
 
-				o.Logger.Print(message)
+				o.logger.Print(message)
 
 				w.WriteHeader(http.StatusInternalServerError)
 
-				if !o.ShowStack {
+				if !o.showStack {
 					message = "Internal Server Error"
 				}
 

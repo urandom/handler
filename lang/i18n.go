@@ -12,19 +12,47 @@ import (
 	xlang "golang.org/x/text/language"
 )
 
-// I18NOpts represents the various options for the I18N handler
-type I18NOpts struct {
-	// Languages provides the handler with supported languages.
-	Languages []xlang.Tag
-	// Session will be used to set the current language.
-	Session handler.Session
-	// UrlPrefix is the prefix that may be used in the url, before the language
-	// code itself. For example, if the prefix is '/web', the final url will be
-	// '/web/en'.
-	UrlPrefix string
-	// Logger is used to print out any error messages. If none is provided, no
-	// error message will be printed.
-	Logger handler.Logger
+type options struct {
+	languages []xlang.Tag
+	session   handler.Session
+	urlPrefix string
+	logger    handler.Logger
+}
+
+// An Option is used to change the default behaviour of the language handlers.
+type Option struct {
+	f func(o *options)
+}
+
+// Languages provides the handler with supported languages.
+func Languages(tags []xlang.Tag) Option {
+	return Option{func(o *options) {
+		o.languages = tags
+	}}
+}
+
+// Session will be used to set the current language.
+func Session(s handler.Session) Option {
+	return Option{func(o *options) {
+		o.session = s
+	}}
+}
+
+// URLPrefix is the prefix that may be used in the url, before the language
+// code itself. For example, if the prefix is '/web', the final url will be
+// '/web/en'.
+func URLPrefix(p string) Option {
+	return Option{func(o *options) {
+		o.urlPrefix = p
+	}}
+}
+
+// Logger is used to print out any error messages. If none is provided, no
+// error message will be printed.
+func Logger(l handler.Logger) Option {
+	return Option{func(o *options) {
+		o.logger = l
+	}}
 }
 
 type contextKey string
@@ -70,8 +98,13 @@ var SessionKey string = "language"
 // selected, or the selected one isn't supported, the first language in the
 // supported slice is used. With a valid language, a redirect is created with
 // the language code added to the url.
-func I18N(h http.Handler, o I18NOpts) http.Handler {
-	if len(o.Languages) < 2 {
+//
+// By default, error messages will not be printed out.
+func I18N(h http.Handler, opts ...Option) http.Handler {
+	o := options{logger: handler.OutLogger()}
+	o.apply(opts)
+
+	if len(o.languages) < 2 {
 		// No point in doing anything if only 1 language is supported. Just
 		// provide the empty data
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -79,17 +112,17 @@ func I18N(h http.Handler, o I18NOpts) http.Handler {
 		})
 	}
 
-	if o.UrlPrefix == "" {
-		o.UrlPrefix = "/"
-	} else if o.UrlPrefix[len(o.UrlPrefix)-1] != '/' {
-		o.UrlPrefix = o.UrlPrefix + "/"
+	if o.urlPrefix == "" {
+		o.urlPrefix = "/"
+	} else if o.urlPrefix[len(o.urlPrefix)-1] != '/' {
+		o.urlPrefix = o.urlPrefix + "/"
 	}
 
-	if o.Logger == nil {
-		o.Logger = handler.NopLogger()
+	if o.logger == nil {
+		o.logger = handler.NopLogger()
 	}
 
-	matcher := xlang.NewMatcher(o.Languages)
+	matcher := xlang.NewMatcher(o.languages)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Prefer RequestURI, to preserve url encoded '/'
@@ -98,12 +131,12 @@ func I18N(h http.Handler, o I18NOpts) http.Handler {
 			uriParts[0] = r.URL.Path
 		}
 
-		if !strings.HasPrefix(uriParts[0], o.UrlPrefix) {
+		if !strings.HasPrefix(uriParts[0], o.urlPrefix) {
 			h.ServeHTTP(w, r)
 			return
 		}
 
-		sub := uriParts[0][len(o.UrlPrefix):]
+		sub := uriParts[0][len(o.urlPrefix):]
 		slashIndex := strings.Index(sub, "/")
 
 		var uriTag xlang.Tag
@@ -118,10 +151,10 @@ func I18N(h http.Handler, o I18NOpts) http.Handler {
 
 		if c != xlang.Exact {
 			// Redirect to one of the supported languages
-			url := o.UrlPrefix
+			url := o.urlPrefix
 
 			if c == xlang.No {
-				tag, _, _ = matcher.Match(fallbackLanguage(o.Session, r))
+				tag, _, _ = matcher.Match(fallbackLanguage(o.session, r))
 				url += tag.String() + "/" + sub
 			} else {
 				url += tag.String() + "/" + sub[slashIndex+1:]
@@ -134,7 +167,7 @@ func I18N(h http.Handler, o I18NOpts) http.Handler {
 			http.Redirect(w, r, url, http.StatusFound)
 		} else if slashIndex == -1 {
 			// Redirect to a slash-ending url
-			url := o.UrlPrefix + tag.String() + "/"
+			url := o.urlPrefix + tag.String() + "/"
 			if slashIndex != -1 {
 				url += sub[slashIndex+1:]
 			}
@@ -147,18 +180,18 @@ func I18N(h http.Handler, o I18NOpts) http.Handler {
 
 			return
 		} else {
-			data := ContextValue{Languages: o.Languages}
+			data := ContextValue{Languages: o.languages}
 
 			// Strip language code
-			r.URL.Path = o.UrlPrefix + r.URL.Path[len(o.UrlPrefix+tag.String()+"/"):]
-			uriParts[0] = o.UrlPrefix + uriParts[0][len(o.UrlPrefix+tag.String()+"/"):]
+			r.URL.Path = o.urlPrefix + r.URL.Path[len(o.urlPrefix+tag.String()+"/"):]
+			uriParts[0] = o.urlPrefix + uriParts[0][len(o.urlPrefix+tag.String()+"/"):]
 			r.RequestURI = strings.Join(uriParts, "?")
 
 			data.Current = tag
 
-			if o.Session != nil {
-				if err := o.Session.Set(r, SessionKey, tag.String()); err != nil {
-					o.Logger.Print("i18n handler: " + err.Error())
+			if o.session != nil {
+				if err := o.session.Set(r, SessionKey, tag.String()); err != nil {
+					o.logger.Print("i18n handler: " + err.Error())
 				}
 			}
 
@@ -189,4 +222,10 @@ func fallbackLanguage(sess handler.Session, r *http.Request) xlang.Tag {
 	}
 
 	return xlang.Make(language)
+}
+
+func (o *options) apply(opts []Option) {
+	for _, op := range opts {
+		op.f(o)
+	}
 }
