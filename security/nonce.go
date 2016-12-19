@@ -85,6 +85,7 @@ func Nonce(h http.Handler, opts ...Option) http.Handler {
 		logger:    handler.OutLogger(),
 		generator: timeRandomGenerator,
 		getter:    headerGetter,
+		setter:    headerSetter,
 		age:       45 * time.Second,
 	}
 	o.apply(opts)
