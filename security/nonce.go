@@ -31,20 +31,13 @@ const (
 var (
 	// TimeRandomGenerator creates string content for a nonce using
 	// the current time and a random integer.
-	TimeRandomGenerator Option = Option{func(o *options) {
+	TimeRandomGenerator = Option{func(o *options) {
 		o.generator = timeRandomGenerator
-	}}
-	// HeaderGetter extracts an existing nonceis valid from a request's X-Nonce
-	// header.
-	HeaderGetter Option = Option{func(o *options) {
-		o.getter = headerGetter
-	}}
-
-	HeaderSetter Option = Option{func(o *options) {
-		o.setter = headerSetter
 	}}
 )
 
+// NonceStatus indicates the status of the nonce in the incoming request, if
+// any.
 type NonceStatus struct {
 	Status nonceStatus
 }
@@ -52,8 +45,8 @@ type NonceStatus struct {
 type options struct {
 	logger    handler.Logger
 	generator func(io.Writer) error
-	getter    func(*http.Request) string
-	setter    func(string, http.ResponseWriter, *http.Request)
+	getter    NonceGetter
+	setter    NonceSetter
 	age       time.Duration
 }
 
@@ -62,6 +55,22 @@ type options struct {
 func Logger(l handler.Logger) Option {
 	return Option{func(o *options) {
 		o.logger = l
+	}}
+}
+
+// Getter allows the user to set the method by which a nonce is retrieved from
+// the incoming request.
+func Getter(g NonceGetter) Option {
+	return Option{func(o *options) {
+		o.getter = g
+	}}
+}
+
+// Setter allows the user to set the method by which a nonce is stored in
+// the outgoing response.
+func Setter(s NonceSetter) Option {
+	return Option{func(o *options) {
+		o.setter = s
 	}}
 }
 
@@ -77,15 +86,37 @@ type Option struct {
 	f func(o *options)
 }
 
-type setter func(http.ResponseWriter, *http.Request) error
-type nonceStore map[string]int64
+// NonceGetter is used by the handler to retrieve a nonce from a request.
+type NonceGetter interface {
+	getNonce(r *http.Request) string
+}
 
+// NonceSetter is used by the handler to set a nonce in the outgoing response.
+type NonceSetter interface {
+	setNonce(nonce string, w http.ResponseWriter, r *http.Request) error
+}
+
+type nonceStore map[string]int64
+type nonceHeaderStorage struct{}
+
+// Nonce returns a handler that will check each request for the
+// existence of a nonce. If a nonce exists, it will be checked for
+// expiration. A status will be recorded in the request's context,
+// indicating whether there was a nonce in the request, and if so,
+// whether it is valid or expired.
+//
+// The recorded status can later be obtained using the
+// NonceValueFromRequest function.
+//
+// A nonce can be set for later checking using the StoreNonce
+// function.
 func Nonce(h http.Handler, opts ...Option) http.Handler {
+	headerStorage := nonceHeaderStorage{}
 	o := options{
 		logger:    handler.OutLogger(),
 		generator: timeRandomGenerator,
-		getter:    headerGetter,
-		setter:    headerSetter,
+		getter:    headerStorage,
+		setter:    headerStorage,
 		age:       45 * time.Second,
 	}
 	o.apply(opts)
@@ -114,14 +145,13 @@ func Nonce(h http.Handler, opts ...Option) http.Handler {
 			return err
 		}
 
-		o.setter(nonce, w, r)
-		return nil
+		return o.setter.setNonce(nonce, w, r)
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		nonce := o.getter(r)
+		nonce := o.getter.getNonce(r)
 		if nonce != "" {
 			if validateAndRemoveNonce(nonce, o.age, opChan) {
 				ctx = context.WithValue(ctx, nonceValueKey, NonceStatus{NonceValid})
@@ -134,6 +164,8 @@ func Nonce(h http.Handler, opts ...Option) http.Handler {
 	})
 }
 
+// NonceValueFromRequest validates a nonce in the given request, and returns
+// the validation status.
 func NonceValueFromRequest(r *http.Request) NonceStatus {
 	if c := r.Context().Value(nonceValueKey); c != nil {
 		if v, ok := c.(NonceStatus); ok {
@@ -144,9 +176,10 @@ func NonceValueFromRequest(r *http.Request) NonceStatus {
 	return NonceStatus{NonceNotRequested}
 }
 
+// StoreNonce generates and stores a nonce in the outgoing response.
 func StoreNonce(w http.ResponseWriter, r *http.Request) (err error) {
 	if c := r.Context().Value(nonceSetterKey); c != nil {
-		if setter, ok := c.(setter); ok {
+		if setter, ok := c.(func(http.ResponseWriter, *http.Request) error); ok {
 			err = setter(w, r)
 		}
 	}
@@ -154,6 +187,7 @@ func StoreNonce(w http.ResponseWriter, r *http.Request) (err error) {
 	return err
 }
 
+// Valid returns true if the nonce is valid.
 func (s NonceStatus) Valid() bool {
 	return s.Status == NonceValid
 }
@@ -162,6 +196,16 @@ func (o *options) apply(opts []Option) {
 	for _, op := range opts {
 		op.f(o)
 	}
+}
+
+func (h nonceHeaderStorage) getNonce(r *http.Request) string {
+	return r.Header.Get("X-Nonce")
+}
+
+func (h nonceHeaderStorage) setNonce(nonce string, w http.ResponseWriter, r *http.Request) error {
+	w.Header().Set("X-Nonce", nonce)
+
+	return nil
 }
 
 func timeRandomGenerator(w io.Writer) error {
@@ -175,14 +219,6 @@ func timeRandomGenerator(w io.Writer) error {
 	}
 
 	return nil
-}
-
-func headerGetter(r *http.Request) string {
-	return r.Header.Get("X-Nonce")
-}
-
-func headerSetter(nonce string, w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("X-Nonce", nonce)
 }
 
 func validateAndRemoveNonce(nonce string, age time.Duration, opChan chan<- func(nonceStore)) bool {
