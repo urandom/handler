@@ -1,6 +1,7 @@
 package security
 
 import (
+	"context"
 	"net/http"
 	"reflect"
 	"testing"
@@ -15,7 +16,9 @@ func TestNonceValueFromRequest(t *testing.T) {
 		args args
 		want NonceStatus
 	}{
-	// TODO: Add test cases.
+		{"no nonce", args{createRequestWithStatus(NonceNotRequested)}, NonceStatus{NonceNotRequested}},
+		{"saved valid", args{createRequestWithStatus(NonceValid)}, NonceStatus{NonceValid}},
+		{"saved expired", args{createRequestWithStatus(NonceInvalid)}, NonceStatus{NonceInvalid}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -91,4 +94,13 @@ func TestNonce(t *testing.T) {
 			}
 		})
 	}
+}
+
+func createRequestWithStatus(status nonceStatus) *http.Request {
+	r, err := http.NewRequest("GET", "/whatever", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return r.WithContext(context.WithValue(r.Context(), nonceValueKey, NonceStatus{status}))
 }
