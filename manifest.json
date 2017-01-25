@@ -1,7 +1,0 @@
-{
-    "dependencies": {
-        "golang.org/x/text": {
-            "branch": "master"
-        }
-    }
-}
