@@ -1,0 +1,13 @@
+{
+    "memo": "1dcc58186ce5639e0402376557b0726a311d2ce01e68093812d9cda38d5c1787",
+    "projects": [
+        {
+            "name": "golang.org/x/text",
+            "branch": "master",
+            "revision": "11dbc599981ccdf4fb18802a28392a8bcf7a9395",
+            "packages": [
+                "language"
+            ]
+        }
+    ]
+}
