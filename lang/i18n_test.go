@@ -6,9 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"golang.org/x/text/language"
-
 	"github.com/urandom/handler/lang"
+	"golang.org/x/text/language"
 )
 
 func TestI18N(t *testing.T) {
@@ -54,6 +53,33 @@ func TestI18N(t *testing.T) {
 
 			if resp.StatusCode != http.StatusOK {
 				t.Fatalf("http status: %d", resp.StatusCode)
+			}
+		})
+	}
+}
+
+func TestURL(t *testing.T) {
+	type args struct {
+		url    string
+		prefix string
+		data   lang.ContextValue
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"empty", args{}, ""},
+		{"empty 2", args{url: "/foo/bar"}, "/foo/bar"},
+		{"with lang", args{data: lang.ContextValue{Current: language.Make("en")}}, "/en/"},
+		{"with prefix", args{prefix: "/foo"}, ""},
+		{"with lang and prefix", args{data: lang.ContextValue{Current: language.Make("en")}, prefix: "/foo"}, "/foo/en/"},
+		{"everything", args{url: "/bar", data: lang.ContextValue{Current: language.Make("en")}, prefix: "/foo"}, "/foo/en/bar"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := lang.URL(tt.args.url, tt.args.prefix, tt.args.data); got != tt.want {
+				t.Errorf("URL() = %v, want %v", got, tt.want)
 			}
 		})
 	}
