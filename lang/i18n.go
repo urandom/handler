@@ -221,6 +221,10 @@ func URL(url, prefix string, data ContextValue) string {
 		prefix += "/"
 	}
 
+	if url == "" {
+		url = "/"
+	}
+
 	if url[0] != '/' {
 		url = "/" + url
 	}
