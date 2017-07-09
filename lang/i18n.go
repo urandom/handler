@@ -200,12 +200,38 @@ func I18N(h http.Handler, opts ...Option) http.Handler {
 	})
 }
 
+//Data returns the language data stored in the request.
+func Data(r *http.Request) ContextValue {
+	if v, ok := r.Context().Value(ContextKey).(ContextValue); ok {
+		return v
+	}
+
+	return ContextValue{}
+}
+
+// URL prefixes a url string with the request language.
+func URL(url, prefix string, data ContextValue) string {
+	if data.Current.IsRoot() {
+		return url
+	}
+
+	if prefix == "" {
+		prefix = "/"
+	} else if prefix[len(prefix)-1] != '/' {
+		prefix += "/"
+	}
+
+	if url[0] != '/' {
+		url = "/" + url
+	}
+
+	return prefix + data.Current.String() + url
+}
+
 func fallbackLanguage(sess handler.Session, r *http.Request) xlang.Tag {
 	if sess != nil {
-		if val, err := sess.Get(r, SessionKey); err == nil && val != nil {
-			if v, ok := val.(string); ok {
-				return xlang.Make(v)
-			}
+		if val, err := sess.Get(r, SessionKey); err == nil && val != "" {
+			return xlang.Make(val)
 		}
 	}
 

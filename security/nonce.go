@@ -88,12 +88,12 @@ type Option struct {
 
 // NonceGetter is used by the handler to retrieve a nonce from a request.
 type NonceGetter interface {
-	getNonce(r *http.Request) string
+	GetNonce(r *http.Request) string
 }
 
 // NonceSetter is used by the handler to set a nonce in the outgoing response.
 type NonceSetter interface {
-	setNonce(nonce string, w http.ResponseWriter, r *http.Request) error
+	SetNonce(nonce string, w http.ResponseWriter, r *http.Request) error
 }
 
 type nonceStore map[string]int64
@@ -145,13 +145,13 @@ func Nonce(h http.Handler, opts ...Option) http.Handler {
 			return err
 		}
 
-		return o.setter.setNonce(nonce, w, r)
+		return o.setter.SetNonce(nonce, w, r)
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		nonce := o.getter.getNonce(r)
+		nonce := o.getter.GetNonce(r)
 		if nonce != "" {
 			if validateAndRemoveNonce(nonce, o.age, opChan) {
 				ctx = context.WithValue(ctx, nonceValueKey, NonceStatus{NonceValid})
@@ -198,11 +198,11 @@ func (o *options) apply(opts []Option) {
 	}
 }
 
-func (h nonceHeaderStorage) getNonce(r *http.Request) string {
+func (h nonceHeaderStorage) GetNonce(r *http.Request) string {
 	return r.Header.Get("X-Nonce")
 }
 
-func (h nonceHeaderStorage) setNonce(nonce string, w http.ResponseWriter, r *http.Request) error {
+func (h nonceHeaderStorage) SetNonce(nonce string, w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("X-Nonce", nonce)
 
 	return nil
