@@ -29,27 +29,27 @@ func (a AuthenticatorFunc) Authenticate(user, password string) bool {
 
 // TokenValidator checks if the given token is valid.
 type TokenValidator interface {
-	ValidateToken(token string, claims jwt.Claims) bool
+	Validate(token string, claims jwt.Claims) bool
 }
 
 // The TokenValidatorFunc type is an adapter to allow using ordinary functions
 // as token storage.
 type TokenValidatorFunc func(token string, claims jwt.Claims) bool
 
-func (t TokenValidatorFunc) ValidateToken(token string, claims jwt.Claims) bool {
+func (t TokenValidatorFunc) Validate(token string, claims jwt.Claims) bool {
 	return t(token, claims)
 }
 
 // TokenStorage stores the given token string along with its expiration time.
 type TokenStorage interface {
-	StoreToken(token string, expiration time.Time) error
+	Store(token string, expiration time.Time) error
 }
 
 // The TokenStorageFunc type is an adapter to allow using ordinary functions
 // as token storage.
 type TokenStorageFunc func(token string, expiration time.Time) error
 
-func (t TokenStorageFunc) StoreToken(token string, expiration time.Time) error {
+func (t TokenStorageFunc) Store(token string, expiration time.Time) error {
 	return t(token, expiration)
 }
 
@@ -166,6 +166,7 @@ func TokenGenerator(h http.Handler, auth Authenticator, secret []byte, opts ...T
 
 		if token, err := t.SignedString(secret); err == nil {
 			if h == nil {
+				w.Header().Add("Authorization", "Bearer: "+token)
 				w.Write([]byte(token))
 
 				return
@@ -248,7 +249,7 @@ func TokenBlacklister(h http.Handler, store TokenStorage, secret []byte, opts ..
 				expiration = time.Now().Add(o.expiration)
 			}
 
-			err = store.StoreToken(tokenStr, expiration)
+			err = store.Store(tokenStr, expiration)
 		}
 
 		if err != nil {
@@ -290,7 +291,7 @@ func RequireToken(h http.Handler, validator TokenValidator, secret []byte, opts 
 
 		if token != nil && token.Valid && token.Claims.Valid() == nil {
 			// Check if the token hasn't been blacklisted, via the custom validator
-			if tok, err := o.extractor.ExtractToken(r); err == nil && validator.ValidateToken(tok, token.Claims) {
+			if tok, err := o.extractor.ExtractToken(r); err == nil && validator.Validate(tok, token.Claims) {
 				r = r.WithContext(context.WithValue(r.Context(), claimsKey, token.Claims))
 				allowed = true
 			}
