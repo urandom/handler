@@ -166,7 +166,7 @@ func TokenGenerator(h http.Handler, auth Authenticator, secret []byte, opts ...T
 
 		if token, err := t.SignedString(secret); err == nil {
 			if h == nil {
-				w.Header().Add("Authorization", "Bearer: "+token)
+				w.Header().Add("Authorization", "Bearer "+token)
 				w.Write([]byte(token))
 
 				return
