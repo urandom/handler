@@ -144,7 +144,13 @@ func TokenGenerator(h http.Handler, auth Authenticator, secret []byte, opts ...T
 	o.apply(opts)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
+		var err error
+		if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+			err = r.ParseMultipartForm(0)
+		} else {
+			err = r.ParseForm()
+		}
+		if err != nil {
 			o.logger.Print("Invalid request form: ", err)
 
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -152,7 +158,8 @@ func TokenGenerator(h http.Handler, auth Authenticator, secret []byte, opts ...T
 		}
 
 		user := r.FormValue(o.user)
-		if !auth.Authenticate(user, r.FormValue(o.password)) {
+		password := r.FormValue(o.password)
+		if user == "" || password == "" || !auth.Authenticate(user, password) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
