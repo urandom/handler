@@ -41,3 +41,15 @@ func (w *ResponseWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 
 	return nil, nil, errors.New("Wrapped ResponseWriter is not a Hijacker")
 }
+
+// CloseNotify tries to use the original http.ResponseWriter for close
+// notification. If the original writer doesn't implement http.CloseNotifier,
+// it returns a channel that will never close.
+func (w *ResponseWrapper) CloseNotify() <-chan bool {
+	if notifier, ok := w.writer.(http.CloseNotifier); ok {
+		c := notifier.CloseNotify()
+		return c
+	}
+
+	return make(chan bool)
+}
