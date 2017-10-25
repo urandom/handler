@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,8 +24,8 @@ func TestAccess(t *testing.T) {
 		ua      string
 		message string
 	}{
-		{"/", "", "GET", 200, "test1", "1.2.3.4", "ref1", "ua1", "%s - %s [%s] \"%s %s\" %d %d \"%s\" %s"},
-		{"/posted", "frank", "POST", 304, "test2.0", "10.0.0.5", "ref2", "ua2", "%s - %s [%s] \"%s %s\" %d %d \"%s\" %s"},
+		{"/", "", "GET", 200, "test1", "1.2.3.4", "ref1", "ua1", `%s - %s [%s - {SPLITTER}] "%s %s" %d %d "%s" %s`},
+		{"/posted", "frank", "POST", 304, "test2.0", "10.0.0.5", "ref2", "ua2", `%s - %s [%s - {SPLITTER}] "%s %s" %d %d "%s" %s`},
 	}
 
 	for i, tc := range cases {
@@ -47,9 +48,19 @@ func TestAccess(t *testing.T) {
 			h.ServeHTTP(rec, r)
 
 			m := fmt.Sprintf(tc.message, tc.ip, tc.user, time.Now().Format(log.AccessDateFormat), tc.method, tc.uri, tc.code, len(tc.resp), tc.ref, tc.ua)
+			parts := strings.Split(m, "{SPLITTER}")
+			first := l.message[0:len(parts[0])]
 
-			if m != l.message {
-				t.Fatalf("expected %s, got %s", m, l.message)
+			if parts[0] != first {
+				t.Fatalf("expected %s, got %s", parts[0], first)
+			}
+
+			idx := strings.Index(l.message[len(parts[0]):], "]")
+			if idx == -1 {
+				t.Fatalf("expected to find a ] in %s", l.message[len(parts[0]):])
+			}
+			if l.message[len(parts[0])+idx:] != parts[1] {
+				t.Fatalf("expected %s, got %s", parts[1], l.message[len(parts[0])+idx:])
 			}
 		})
 	}

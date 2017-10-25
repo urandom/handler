@@ -43,7 +43,7 @@ func DateFormat(f string) Option {
 // logger, provided by the options, whenever the handler h is invoked. The log
 // message is of the following format:
 //
-// IP - USER [DATETIME] "HTTP_METHOD URI" STATUS_CODE BODY_LENGTH "REFERER" USER_AGENT
+// IP - USER [DATETIME - DURATION] "HTTP_METHOD URI" STATUS_CODE BODY_LENGTH "REFERER" USER_AGENT
 //
 // By default, all messages are printed to os.Stdout.
 func Access(h http.Handler, opts ...Option) http.Handler {
@@ -51,6 +51,8 @@ func Access(h http.Handler, opts ...Option) http.Handler {
 	o.apply(opts)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
 		wrapper := handler.NewResponseWrapper(w)
 
 		uri := r.URL.RequestURI()
@@ -68,12 +70,13 @@ func Access(h http.Handler, opts ...Option) http.Handler {
 		w.WriteHeader(wrapper.Code)
 		w.Write(wrapper.Body.Bytes())
 
-		timestamp := time.Now().Format(o.dateFormat)
+		now := time.Now()
+		timestamp := now.Format(o.dateFormat)
 		code := wrapper.Code
 		length := wrapper.Body.Len()
 
-		o.logger.Print(fmt.Sprintf("%s - %s [%s] \"%s %s\" %d %d \"%s\" %s",
-			remoteAddr, remoteUser, timestamp, method, uri, code, length, referer, userAgent))
+		o.logger.Print(fmt.Sprintf("%s - %s [%s - %s] \"%s %s\" %d %d \"%s\" %s",
+			remoteAddr, remoteUser, timestamp, now.Sub(start), method, uri, code, length, referer, userAgent))
 	})
 }
 
