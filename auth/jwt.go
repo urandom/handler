@@ -121,10 +121,16 @@ type options struct {
 
 type headerExtractor struct{}
 
-type tokenKey string
+type contextKey string
 
-const key tokenKey = "token-key"
-const claimsKey tokenKey = "claims-key"
+const (
+	// TokenKey is the request context key that points to the generated token.
+	TokenKey contextKey = "token"
+
+	// ClaimsKey is the request context key that points to any JWT claims in
+	// the current request.
+	ClaimsKey contextKey = "claims"
+)
 
 // TokenGenerator returns a handler that will read a username and password from
 // a request form, create a jwt token if they are valid, and store the signed
@@ -179,7 +185,7 @@ func TokenGenerator(h http.Handler, auth Authenticator, secret []byte, opts ...T
 				return
 			}
 
-			r = r.WithContext(context.WithValue(r.Context(), key, token))
+			r = r.WithContext(context.WithValue(r.Context(), TokenKey, token))
 
 			h.ServeHTTP(w, r)
 		} else {
@@ -299,7 +305,7 @@ func RequireToken(h http.Handler, validator TokenValidator, secret []byte, opts 
 		if token != nil && token.Valid && token.Claims.Valid() == nil {
 			// Check if the token hasn't been blacklisted, via the custom validator
 			if tok, err := o.extractor.ExtractToken(r); err == nil && validator.Validate(tok, token.Claims) {
-				r = r.WithContext(context.WithValue(r.Context(), claimsKey, token.Claims))
+				r = r.WithContext(context.WithValue(r.Context(), ClaimsKey, token.Claims))
 				allowed = true
 			}
 		} else if ve, ok := err.(*jwt.ValidationError); ok {
@@ -320,7 +326,7 @@ func RequireToken(h http.Handler, validator TokenValidator, secret []byte, opts 
 // Token returns the token string stored in the request context, or an empty
 // string.
 func Token(r *http.Request) string {
-	if token, ok := r.Context().Value(key).(string); ok {
+	if token, ok := r.Context().Value(TokenKey).(string); ok {
 		return token
 	}
 
@@ -329,7 +335,7 @@ func Token(r *http.Request) string {
 
 // Claims returns the claims stored in the request
 func Claims(r *http.Request) jwt.Claims {
-	if claims, ok := r.Context().Value(claimsKey).(jwt.Claims); ok {
+	if claims, ok := r.Context().Value(ClaimsKey).(jwt.Claims); ok {
 		return claims
 	}
 
