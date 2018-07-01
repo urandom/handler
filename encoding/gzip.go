@@ -55,6 +55,10 @@ func Gzip(h http.Handler, opts ...Option) http.Handler {
 		}
 		w.Header().Del("Content-Length")
 
+		if wrapper.Code != http.StatusOK {
+			w.WriteHeader(wrapper.Code)
+		}
+
 		gz := gzip.NewWriter(w)
 		gz.Flush()
 
@@ -65,8 +69,6 @@ func Gzip(h http.Handler, opts ...Option) http.Handler {
 		}
 
 		gz.Close()
-
-		w.WriteHeader(wrapper.Code)
 	})
 }
 
